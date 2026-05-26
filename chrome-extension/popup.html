@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --card-bg: rgba(255, 255, 255, 0.03);
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --primary: #6366f1;
+      --primary-glow: rgba(99, 102, 241, 0.15);
+      --success: #10b981;
+      --error: #ef4444;
+    }
+    body {
+      width: 280px;
+      margin: 0;
+      padding: 16px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .logo {
+      width: 24px;
+      height: 24px;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      border-radius: 6px;
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+    .title {
+      font-size: 15px;
+      font-weight: 600;
+      margin: 0;
+      background: linear-gradient(135deg, #fff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .status-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .status-label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .status-value {
+      font-size: 12px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--error);
+      box-shadow: 0 0 8px var(--error);
+    }
+    .dot.connected {
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+    .help-text {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin: 0;
+    }
+    .port-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 4px;
+    }
+    .port-input {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      padding: 4px 8px;
+      width: 60px;
+      font-size: 12px;
+      outline: none;
+    }
+    .port-input:focus {
+      border-color: var(--primary);
+    }
+    .btn {
+      background: var(--primary);
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 8px;
+      transition: opacity 0.2s;
+    }
+    .btn:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo"></div>
+    <h1 class="title">FSD Browser Relay</h1>
+  </div>
+  <div class="status-card">
+    <div class="status-row">
+      <span class="status-label">连接状态</span>
+      <span class="status-value">
+        <span id="status-dot" class="dot"></span>
+        <span id="status-text">未连接</span>
+      </span>
+    </div>
+    <div class="status-row">
+      <span class="status-label">连接端口</span>
+      <span class="port-input-row">
+        <input type="number" id="port-input" class="port-input" value="9223" min="1024" max="65535">
+        <button id="save-btn" class="btn">保存并重连</button>
+      </span>
+    </div>
+  </div>
+  <p class="help-text">
+    本插件将控制你当前标签页执行 AI 任务。请确保本地 FSD 客户端运行正常并添加了 chrome-extension-mcp 服务。
+  </p>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -23,5 +23,14 @@
   },
   "model": "gemini-3.1-pro-preview",
   "workspace": "C:\\asitela\\theoms",
-  "workspace_updated_at": "2026-05-26T15:33:21.609Z"
+  "workspace_updated_at": "2026-05-26T15:33:21.609Z",
+  "mcpServers": [
+    {
+      "name": "chrome-extension-mcp",
+      "command": "node",
+      "args": [
+        "agents/chrome-extension-mcp.js"
+      ]
+    }
+  ]
 }

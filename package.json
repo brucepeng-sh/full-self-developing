@@ -1,8 +1,11 @@
 {
-  "name": "full-self-developing",
+  "name": "@full-self-developing/fsd",
   "version": "1.0.0",
   "description": "Premium graphical desktop client for the pre-authenticated local Gemini CLI",
   "main": "server.js",
+  "bin": {
+    "fsd": "./bin/cli.js"
+  },
   "scripts": {
     "start": "node server.js"
   },
@@ -11,9 +14,9 @@
     "cors": "^2.8.5",
     "express": "^4.19.2",
     "gray-matter": "^4.0.3",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "ws": "^8.21.0"
   },
   "author": "Antigravity Developer",
-  "license": "MIT",
-  "private": true
+  "license": "MIT"
 }

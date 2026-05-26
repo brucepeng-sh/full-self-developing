@@ -61,7 +61,10 @@ function launchBrowser(port, token) {
     
     // Launch browser in dedicated, frameless standalone application window
     // and isolate user data directories so extension/cache remains local.
-    const userProfileDir = path.join(__dirname, '.chrome-profile');
+    const isGlobal = process.env.FSD_GLOBAL === 'true' || __dirname.includes('node_modules');
+    const userProfileDir = isGlobal
+        ? path.join(require('os').homedir(), '.fsd', '.chrome-profile')
+        : path.join(__dirname, '.chrome-profile');
     
     const args = [
         `--app=${targetUrl}`,

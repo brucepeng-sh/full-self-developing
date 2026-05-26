@@ -16,9 +16,12 @@ const util = require('util');
 const execAsync = util.promisify(exec);
 const { serverLog, errorLog } = require('../logger');
 
-const CONFIG_DIR = path.join(__dirname, '..', '.engine');
+const isGlobal = process.env.FSD_GLOBAL === 'true' || __dirname.includes('node_modules');
+const CONFIG_DIR = isGlobal
+    ? path.join(os.homedir(), '.fsd', '.engine')
+    : path.join(__dirname, '..', '.engine');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'engine-config.json');
-const DEFAULTS_FILE = path.join(CONFIG_DIR, 'default-settings.json');
+const DEFAULTS_FILE = path.join(__dirname, '..', '.engine', 'default-settings.json');
 
 const VALID_ENGINES = ['openrouter', 'gemini-cli'];
 const DEFAULT_ENGINE = 'openrouter';

@@ -104,7 +104,10 @@ function getLogPath(uuid) {
 }
 
 // Project-local chat log path (persisted inside project/logs/chat/)
-const PROJECT_CHAT_LOGS_DIR = path.join(__dirname, 'logs', 'chat');
+const isGlobal = process.env.FSD_GLOBAL === 'true' || __dirname.includes('node_modules');
+const PROJECT_CHAT_LOGS_DIR = isGlobal
+    ? path.join(require('os').homedir(), '.fsd', 'logs', 'chat')
+    : path.join(__dirname, 'logs', 'chat');
 function getProjectChatLogPath(uuid) {
     return path.join(PROJECT_CHAT_LOGS_DIR, uuid, 'overview.jsonl');
 }
@@ -1794,4 +1797,4 @@ function startServer(startPort) {
     server.listen(startPort, '127.0.0.1');
 }
 
-startServer(8033);
+startServer(8033); // Touch to trigger restart for new MCP settings

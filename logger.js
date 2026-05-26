@@ -10,9 +10,13 @@
  */
 
 const fs   = require('fs');
+const os   = require('os');
 const path = require('path');
 
-const LOGS_DIR = path.join(__dirname, 'logs', 'server');
+const isGlobal = process.env.FSD_GLOBAL === 'true' || __dirname.includes('node_modules');
+const LOGS_DIR = isGlobal
+    ? path.join(os.homedir(), '.fsd', 'logs', 'server')
+    : path.join(__dirname, 'logs', 'server');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

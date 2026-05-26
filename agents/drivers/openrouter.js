@@ -34,7 +34,23 @@ function getMcpToolsSchema() {
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 
-const API_KEY = process.env.OPENROUTER_API_KEY || '';
+const engineConfig = require('../engine-config');
+
+function getApiKey() {
+    if (process.env.OPENROUTER_API_KEY) {
+        return process.env.OPENROUTER_API_KEY;
+    }
+    try {
+        const settings = engineConfig.loadSettings();
+        if (settings.ai && settings.ai.apiKey) {
+            return settings.ai.apiKey;
+        }
+    } catch (e) {
+        // Fallback or ignore
+    }
+    return '';
+}
+
 const DEFAULT_MODEL = 'deepseek/deepseek-v4-flash:free';
 const FALLBACK_MODELS = [
     'deepseek/deepseek-r1-distill-llama-70b:free',
@@ -80,7 +96,7 @@ async function fetchModels() {
             path: '/api/v1/models',
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${API_KEY}`,
+                'Authorization': `Bearer ${getApiKey()}`,
                 'HTTP-Referer': 'http://localhost:8033',
                 'X-Title': 'FSD Agent',
             },
@@ -201,7 +217,7 @@ function callAPI(prompt, modelName) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${API_KEY}`,
+                'Authorization': `Bearer ${getApiKey()}`,
                 'HTTP-Referer': 'http://localhost:8033',
                 'X-Title': 'FSD Agent',
                 'Content-Length': Buffer.byteLength(postData),
@@ -277,7 +293,7 @@ function stream({ prompt, history = [], res, signal, model }) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${API_KEY}`,
+            'Authorization': `Bearer ${getApiKey()}`,
             'HTTP-Referer': 'http://localhost:8033',
             'X-Title': 'TheOMS AI Client',
             'Content-Length': Buffer.byteLength(postData),
