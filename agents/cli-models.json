@@ -1,0 +1,48 @@
+{
+  "gemini-cli": [
+    { "id": "gemini-3-pro-preview" },
+    { "id": "gemini-3-flash-preview" },
+    { "id": "gemini-2.5-pro" },
+    { "id": "gemini-2.5-flash" },
+    { "id": "gemini-2.5-flash-lite" },
+    { "id": "gemini-2.0-flash" },
+    { "id": "gemini-2.0-flash-lite" }
+  ],
+  "codex": [
+    { "id": "gpt-5.5" },
+    { "id": "gpt-5.4" },
+    { "id": "gpt-5.3-codex" },
+    { "id": "gpt-5.2-codex" },
+    { "id": "gpt-5.1-codex" },
+    { "id": "gpt-5-codex" },
+    { "id": "gpt-4o" },
+    { "id": "gpt-4o-mini" },
+    { "id": "claude-3-7-sonnet" },
+    { "id": "claude-3-5-sonnet" },
+    { "id": "o1" },
+    { "id": "o3-mini" },
+    { "id": "o3" },
+    { "id": "o4-mini" }
+  ],
+  "claude-cli": [
+    { "id": "claude-3-7-sonnet" },
+    { "id": "claude-3-5-sonnet" },
+    { "id": "claude-3-5-haiku" },
+    { "id": "claude-3-opus" }
+  ],
+  "openshell": [
+    { "id": "gpt-4o" },
+    { "id": "gpt-4o-mini" },
+    { "id": "claude-3-7-sonnet" },
+    { "id": "gemini-2.5-pro" }
+  ],
+  "tts-local-cli": [
+    { "id": "kokoro" },
+    { "id": "edge-tts" },
+    { "id": "piper" },
+    { "id": "coqui-tts" }
+  ],
+  "skill-workshop": [
+    { "id": "default-skill-model" }
+  ]
+}

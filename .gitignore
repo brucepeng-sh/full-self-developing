@@ -1,0 +1,13 @@
+node_modules/
+.chrome-profile/
+.boot-conf.json
+queue/tasks.json
+
+# Runtime logs (chat history, agent execution, server logs)
+logs/
+queue/
+scratch/
+md/
+
+.idea
+check_tasks.js

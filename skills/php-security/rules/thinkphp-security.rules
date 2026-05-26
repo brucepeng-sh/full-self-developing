@@ -1,0 +1,23 @@
+# ThinkPHP 5.0 Security Rules (Grep Patterns)
+
+## SQL Injection (Raw Queries)
+# Identify whereRaw or Db::query with potential interpolation
+grep -r "whereRaw" application/
+grep -r "Db::query" application/
+grep -r "->query(" application/
+
+## RCE (Method/Controller manipulation)
+# Check for vulnerable ThinkPHP versions (below 5.0.24)
+grep "'VERSION'" thinkphp/base.php
+
+## Insecure Configuration
+# Check if app_debug is true in production
+grep "'app_debug'" application/config.php | grep "true"
+
+## Insecure File Uploads
+# Check for missing extension validation in move()
+grep -r "->move(" application/ | grep -v "validate"
+
+## Hardcoded Credentials
+# Scan database.php for potential hardcoded production passwords
+grep -C 5 "'password'" application/database.php

@@ -1,0 +1,27 @@
+{
+  "engine": "gemini-cli",
+  "updated_at": "2026-05-26T15:32:56.310Z",
+  "settings": {
+    "ai": {
+      "executionMode": "Local CLI Driver",
+      "provider": "gemini-cli",
+      "model": "gemini-3.1-pro-preview"
+    },
+    "ui": {
+      "theme": "Light",
+      "language": "English"
+    },
+    "fsd": {
+      "reviewRounds": 1,
+      "concurrency": 1,
+      "manualConfirm": true,
+      "requireApproval": true
+    },
+    "memory": {},
+    "safety": {},
+    "advanced": {}
+  },
+  "model": "gemini-3.1-pro-preview",
+  "workspace": "C:\\asitela\\theoms",
+  "workspace_updated_at": "2026-05-26T15:33:21.609Z"
+}

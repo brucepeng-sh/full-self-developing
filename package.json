@@ -1,0 +1,19 @@
+{
+  "name": "full-self-developing",
+  "version": "1.0.0",
+  "description": "Premium graphical desktop client for the pre-authenticated local Gemini CLI",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "gray-matter": "^4.0.3",
+    "uuid": "^14.0.0"
+  },
+  "author": "Antigravity Developer",
+  "license": "MIT",
+  "private": true
+}
