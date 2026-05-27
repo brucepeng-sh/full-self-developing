@@ -24,6 +24,7 @@ if not exist client\node_modules (
 echo [System] Starting secure loopback local API Server and Vite Dev Server...
 echo [System] Please wait for Vite to show the local URL (usually http://localhost:5173/)
 echo [System] Auto-reload enabled (Modifying backend or frontend code will auto-refresh).
+set NODE_OPTIONS=--no-deprecation
 npx -y concurrently "npx nodemon --watch server.js --watch agents -e js server.js" "npm --prefix client run dev"
 
 pause

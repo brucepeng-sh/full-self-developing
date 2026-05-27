@@ -1,42 +1,53 @@
 let memoryToken = null;
+let handshakePromise = null;
 
-export const getToken = async () => {
-    if (memoryToken) return memoryToken;
+export const getToken = async (forceHandshake = false) => {
+    if (!forceHandshake && memoryToken) return memoryToken;
     
-    const urlParams = new URLSearchParams(window.location.search);
-    let token = urlParams.get('token');
-    if (token) {
-        localStorage.setItem('appToken', token);
-        window.history.replaceState({}, '', window.location.pathname);
-        memoryToken = token;
-        return token;
-    } 
-    
-    token = localStorage.getItem('appToken');
-    if (token) {
-        // We'll try using it. If it's stale, requests will fail and we could clear it,
-        // but for now let's return it.
-        memoryToken = token;
-        return token;
+    if (!forceHandshake) {
+        const urlParams = new URLSearchParams(window.location.search);
+        let token = urlParams.get('token');
+        if (token) {
+            localStorage.setItem('appToken', token);
+            window.history.replaceState({}, '', window.location.pathname);
+            memoryToken = token;
+            return token;
+        } 
+        
+        token = localStorage.getItem('appToken');
+        if (token) {
+            // We'll try using it. If it's stale, requests will fail and we could clear it,
+            // but for now let's return it.
+            memoryToken = token;
+            return token;
+        }
     }
+
+    if (handshakePromise) return handshakePromise;
 
     // Auto-handshake for Vite Dev Server environment
-    try {
-        const res = await fetch('/api/token/handshake');
-        const data = await res.json();
-        if (data.token) {
-            token = data.token;
-            localStorage.setItem('appToken', token);
-            memoryToken = token;
+    handshakePromise = (async () => {
+        try {
+            const res = await fetch('/api/token/handshake');
+            const data = await res.json();
+            if (data.token) {
+                const token = data.token;
+                localStorage.setItem('appToken', token);
+                memoryToken = token;
+                return token;
+            }
+        } catch (e) {
+            console.error('Failed to handshake token:', e);
+        } finally {
+            handshakePromise = null;
         }
-    } catch (e) {
-        console.error('Failed to handshake token:', e);
-    }
+        return null;
+    })();
     
-    return token;
+    return handshakePromise;
 };
 
-export const apiFetch = async (endpoint, options = {}) => {
+export const apiFetch = async (endpoint, options = {}, isRetry = false) => {
     const token = await getToken();
     const url = new URL(endpoint, window.location.origin);
     if (token) {
@@ -51,10 +62,12 @@ export const apiFetch = async (endpoint, options = {}) => {
 
     const res = await fetch(url.toString(), { ...options, headers });
     
-    if (res.status === 403) {
-        // Token might be stale (server rebooted), clear it so next fetch handshakes
+    if (res.status === 403 && !isRetry) {
+        // Token might be stale (server rebooted), clear it and retry once
         memoryToken = null;
         localStorage.removeItem('appToken');
+        await getToken(true); // force fresh handshake
+        return apiFetch(endpoint, options, true); // retry
     }
     
     if (!res.ok) {
