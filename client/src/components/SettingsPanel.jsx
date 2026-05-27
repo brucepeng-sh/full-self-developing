@@ -328,14 +328,15 @@ export default function SettingsPanel({ defaultTab = 'ui' }) {
     setHasTestedConnection(true);
     setTestResult({ type: 'info', msg: 'Testing connection...' });
     try {
+      const targetConfig = editingTool || settings.aiTools?.find(t => t.isDefault) || settings.ai;
       const data = await apiFetch('/api/ai/test-connection', {
         method: 'POST',
-        body: JSON.stringify(settings.ai)
+        body: JSON.stringify(targetConfig)
       });
       if (data.success) {
         setTestResult({ type: 'success', msg: data.message });
-        updateSettingsBatch(settings);
-        handleRefreshModels();
+        if (!editingTool) updateSettingsBatch(settings);
+        handleRefreshModels(targetConfig);
       } else {
         setTestResult({ type: 'error', msg: data.error });
       }
@@ -376,13 +377,14 @@ export default function SettingsPanel({ defaultTab = 'ui' }) {
   const handleTestModel = async () => {
     setModelsResult({ type: 'info', msg: 'Testing model with "Hello"...' });
     try {
+      const targetConfig = editingTool || settings.aiTools?.find(t => t.isDefault) || settings.ai;
       const data = await apiFetch('/api/ai/test-model', {
         method: 'POST',
-        body: JSON.stringify(settings.ai)
+        body: JSON.stringify(targetConfig)
       });
       if (data.success) {
         setModelsResult({ type: 'success', msg: `Success: ${data.reply.substring(0, 50)}` });
-        updateSettingsBatch(settings);
+        if (!editingTool) updateSettingsBatch(settings);
       } else {
         setModelsResult({ type: 'error', msg: `⚠️ ${data.error}` });
       }

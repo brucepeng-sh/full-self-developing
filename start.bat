@@ -7,6 +7,13 @@ echo   Starting Full-Self-Developing Desktop Application
 echo ========================================================
 echo.
 
+echo [System] Checking for orphaned MCP Relay processes on port 9223...
+for /f "tokens=5" %%a in ('netstat -aon ^| find ":9223" ^| find "LISTENING"') do (
+    echo [System] Port 9223 is in use by PID %%a, terminating...
+    taskkill /F /PID %%a >nul 2>&1
+)
+echo.
+
 echo [System] Checking Node dependencies in root...
 if not exist node_modules (
     echo [System] node_modules not found. Installing packages...

@@ -1033,6 +1033,10 @@ app.post('/api/ai/test-model', (req, res) => {
             return sendErrorResponse(res, 400, 'BAD_REQUEST', 'CLI Tool is required.');
         }
         
+        if (cmd === 'codex' || provider === 'codex') {
+            return res.json({ success: true, reply: `Model '${model || 'default'}' selected for Codex. (Codex requires a terminal, skipping test prompt).` });
+        }
+        
         const { spawnSync } = require('child_process');
         try {
             const result = spawnSync(`${cmd} ask "Hello" --model "${model || ''}"`, {
