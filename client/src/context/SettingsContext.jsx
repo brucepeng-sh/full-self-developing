@@ -19,6 +19,16 @@ export const SettingsProvider = ({ children }) => {
           document.cookie = `theme=${isDark ? 'dark' : 'light'}; path=/; max-age=31536000`;
         }
         
+        if (parsed.ai && (!parsed.aiTools || parsed.aiTools.length === 0)) {
+            parsed.aiTools = [{
+                ...parsed.ai,
+                id: 'default-legacy',
+                name: 'Default AI',
+                isDefault: true
+            }];
+        }
+        if (!parsed.aiTools) parsed.aiTools = [];
+        
         return parsed;
       }
     } catch (e) {
@@ -32,6 +42,7 @@ export const SettingsProvider = ({ children }) => {
     }
     
     return {
+      aiTools: [],
       ai: { model: 'Loading...' },
       ui: initialUi,
       fsd: {},
@@ -140,6 +151,16 @@ export const SettingsProvider = ({ children }) => {
         ...localSettings,
         ...backendSettings
       };
+      
+      if (mergedSettings.ai && (!mergedSettings.aiTools || mergedSettings.aiTools.length === 0)) {
+          mergedSettings.aiTools = [{
+              ...mergedSettings.ai,
+              id: 'default-legacy',
+              name: 'Default AI',
+              isDefault: true
+          }];
+      }
+      if (!mergedSettings.aiTools) mergedSettings.aiTools = [];
       
       // Update localStorage with merged settings
       localStorage.setItem('fsd_all_settings', JSON.stringify(mergedSettings));

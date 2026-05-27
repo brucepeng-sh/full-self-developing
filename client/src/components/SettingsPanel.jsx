@@ -250,6 +250,8 @@ export default function SettingsPanel({ defaultTab = 'ui' }) {
   const [showCreateSkillModal, setShowCreateSkillModal] = useState(false);
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillDesc, setNewSkillDesc] = useState('');
+  const [editingToolId, setEditingToolId] = useState(null);
+  const [editingTool, setEditingTool] = useState(null);
 
   const [mcpServers, setMcpServers] = useState([]);
   const [showAddMcpModal, setShowAddMcpModal] = useState(false);
@@ -342,18 +344,19 @@ export default function SettingsPanel({ defaultTab = 'ui' }) {
     }
   };
 
-  const handleRefreshModels = async () => {
+  const handleRefreshModels = async (configOverride) => {
+    const targetConfig = configOverride || editingTool || settings.aiTools?.find(t => t.isDefault) || settings.ai;
     setModelsResult({ type: 'info', msg: 'Fetching models (async)...' });
     try {
       const data = await apiFetch('/api/ai/models', {
         method: 'POST',
-        body: JSON.stringify(settings.ai)
+        body: JSON.stringify(targetConfig)
       });
       if (data.success) {
         if (data.models && data.models.length > 0) {
            setModelsList(data.models);
-           if (!settings.ai.model || !data.models.includes(settings.ai.model)) {
-             updateSetting('ai', 'model', data.models[0]);
+           if (editingTool && (!editingTool.model || !data.models.includes(editingTool.model))) {
+             setEditingTool({ ...editingTool, model: data.models[0] });
            }
            setModelsResult({ type: 'success', msg: `Found ${data.models.length} models.` });
         } else {
@@ -535,143 +538,259 @@ export default function SettingsPanel({ defaultTab = 'ui' }) {
             </Row>
           </div>
         );
-      case 'ai':
-        const isCliMode = settings.ai.executionMode === 'Local CLI Driver';
+            case 'ai': {
+        const aiToolsList = settings.aiTools || [];
+        
+        const saveEditingTool = () => {
+            const updatedTools = [...aiToolsList];
+            const existingIndex = updatedTools.findIndex(t => t.id === editingTool.id);
+            if (existingIndex >= 0) {
+                updatedTools[existingIndex] = editingTool;
+            } else {
+                updatedTools.push(editingTool);
+            }
+            if (editingTool.isDefault) {
+                updatedTools.forEach(t => { if (t.id !== editingTool.id) t.isDefault = false; });
+            }
+            const defaultTool = updatedTools.find(t => t.isDefault) || updatedTools[0];
+            updateSettingsBatch({ 
+                ...settings, 
+                aiTools: updatedTools,
+                ai: { ...defaultTool }
+            });
+            setEditingToolId(null);
+            setEditingTool(null);
+        };
+        
+        const setDefaultTool = (id) => {
+            const updatedTools = aiToolsList.map(t => ({ ...t, isDefault: t.id === id }));
+            const defaultTool = updatedTools.find(t => t.isDefault) || updatedTools[0];
+            updateSettingsBatch({ 
+                ...settings, 
+                aiTools: updatedTools,
+                ai: { ...defaultTool } 
+            });
+        };
+        
+        const deleteTool = (id) => {
+            const updatedTools = aiToolsList.filter(t => t.id !== id);
+            if (updatedTools.length > 0 && !updatedTools.find(t => t.isDefault)) {
+                updatedTools[0].isDefault = true;
+            }
+            const defaultTool = updatedTools.length > 0 ? (updatedTools.find(t => t.isDefault) || updatedTools[0]) : {};
+            updateSettingsBatch({ 
+                ...settings, 
+                aiTools: updatedTools,
+                ai: { ...defaultTool } 
+            });
+        };
+
+        if (editingToolId !== null && editingTool) {
+          const isCliMode = editingTool.executionMode === 'Local CLI Driver';
+          
+          return (
+            <div className="bg-white dark:bg-zinc-900 shadow-sm border border-gray-200 dark:border-zinc-800 rounded-lg p-6 mb-6">
+              <div className="flex items-center justify-between mb-6 border-b border-gray-100 dark:border-zinc-800 pb-4">
+                <div className="flex items-center gap-3">
+                  <button onClick={() => { setEditingToolId(null); setEditingTool(null); }} className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors text-gray-500">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                  </button>
+                  <SectionTitle>{editingToolId === 'new' ? 'Add AI Tool' : 'Edit AI Tool'}</SectionTitle>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" onClick={() => { setEditingToolId(null); setEditingTool(null); }}>Cancel</Button>
+                  <Button variant="primary" onClick={saveEditingTool}>Save Configuration</Button>
+                </div>
+              </div>
+              
+              <Row label="Configuration Name" badge={getStatusBadge(false)}>
+                <Input value={editingTool.name || ''} onChange={(v) => setEditingTool({ ...editingTool, name: v })} className="w-64" placeholder="e.g. My GPT-4" />
+              </Row>
+
+              <Row label={t('settings.ai.executionMode')} badge={getStatusBadge(false)}>
+                <Select 
+                  value={editingTool.executionMode || 'HTTP API'} 
+                  onChange={(v) => setEditingTool({ ...editingTool, executionMode: v, provider: v === 'Local CLI Driver' ? 'gemini-cli' : 'OpenRouter' })} 
+                  options={['HTTP API', 'Local CLI Driver']} 
+                />
+              </Row>
+
+              <Row label={t('settings.ai.provider')} badge={getStatusBadge(false)}>
+                <select
+                  value={editingTool.provider}
+                  onChange={(e) => setEditingTool({ ...editingTool, provider: e.target.value })}
+                  className="h-9 block w-48 rounded-md border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:text-gray-100 px-3 py-1"
+                >
+                  {!isCliMode ? (
+                    <>
+                      <optgroup label="Global Ecosystem">
+                        {['OpenAI', 'Anthropic', 'Google', 'Microsoft (Azure)', 'Amazon Bedrock', 'xAI', 'Mistral', 'Groq', 'Perplexity', 'HuggingFace', 'Cohere (Voyage)', 'NVIDIA', 'GitHub Copilot'].map(o => <option key={o} value={o}>{o}</option>)}
+                      </optgroup>
+                      <optgroup label="Aggregators">
+                        {['OpenRouter', 'LiteLLM', 'Cloudflare AI Gateway', 'Vercel AI Gateway'].map(o => <option key={o} value={o}>{o}</option>)}
+                      </optgroup>
+                      <optgroup label="Chinese Ecosystem">
+                        {['DeepSeek', 'Alibaba (Qwen)', 'Tencent (Hunyuan)', 'Baidu (Qianfan)', 'ByteDance (Volcengine/Doubao)', 'Moonshot (Kimi)', 'Minimax', 'StepFun'].map(o => <option key={o} value={o}>{o}</option>)}
+                      </optgroup>
+                      <optgroup label="Local & Cloud Compute">
+                        {['Ollama', 'LMStudio', 'vLLM', 'sglang', 'cerebras', 'deepinfra', 'fireworks', 'together', 'arcee', 'chutes', 'venice'].map(o => <option key={o} value={o}>{o}</option>)}
+                      </optgroup>
+                      <optgroup label="Voice, Image & Multi-modal">
+                        {['ElevenLabs', 'Deepgram', 'SenseAudio', 'Runway', 'Fal', 'Comfy'].map(o => <option key={o} value={o}>{o}</option>)}
+                      </optgroup>
+                    </>
+                  ) : (
+                    <optgroup label="Supported CLI Drivers">
+                      {['gemini-cli', 'claude-cli', 'opencode', 'codex', 'openshell', 'tts-local-cli', 'skill-workshop'].map(o => <option key={o} value={o}>{o}</option>)}
+                    </optgroup>
+                  )}
+                </select>
+              </Row>
+
+              {!isCliMode && (
+                <>
+                  <Row label={t('settings.ai.apiKey')} badge={getStatusBadge(false)}>
+                    <PasswordInput value={editingTool.apiKey || ''} onChange={(v) => setEditingTool({ ...editingTool, apiKey: v })} className="w-64" />
+                  </Row>
+                  <Row label={t('settings.ai.baseUrl')} badge={getStatusBadge(false)}>
+                    <Input value={editingTool.baseUrl || ''} onChange={(v) => setEditingTool({ ...editingTool, baseUrl: v })} className="w-64" />
+                  </Row>
+                </>
+              )}
+
+              <Row label="" badge={getStatusBadge(false)}>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" onClick={handleTestConnection}>{t('settings.ai.testConnection')}</Button>
+                  {testResult && <span className={`text-sm ${testResult.type === 'error' ? 'text-red-500' : testResult.type === 'success' ? 'text-green-500' : 'text-blue-500'}`}>{testResult.msg}</span>}
+                </div>
+              </Row>
+
+              <Row label={t('settings.ai.model')} badge={getStatusBadge(false)} noBorder={!advancedAiOpen}>
+                <div className="flex flex-col gap-1">
+                  <div className="flex gap-2 items-center relative">
+                    <select
+                      value={editingTool.model || ''}
+                      onChange={(e) => setEditingTool({ ...editingTool, model: e.target.value })}
+                      className="h-9 block w-48 rounded-md border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:text-gray-100 px-3 py-1"
+                    >
+                      <option value="" disabled>Select model</option>
+                      {modelsList.map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                      {editingTool.model && !modelsList.includes(editingTool.model) && (
+                        <option value={editingTool.model}>{editingTool.model}</option>
+                      )}
+                    </select>
+                    <Button variant="secondary" onClick={handleTestModel}>Test</Button>
+                  </div>
+                  {modelsResult && <span className={`text-sm ${modelsResult.type === 'error' ? 'text-red-500' : modelsResult.type === 'success' ? 'text-green-500' : 'text-yellow-600 dark:text-yellow-500'}`}>{modelsResult.msg}</span>}
+                </div>
+              </Row>
+              
+              <div className="mt-4 border-t border-gray-100 dark:border-zinc-800 pt-4">
+                <button 
+                  className="text-sm font-medium text-blue-600 dark:text-blue-400 flex items-center focus:outline-none mb-4"
+                  onClick={() => setAdvancedAiOpen(!advancedAiOpen)}
+                >
+                  {t('settings.ai.advancedOptions')}
+                  <svg className={`w-4 h-4 ml-1 transform transition-transform ${advancedAiOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                
+                {advancedAiOpen && (
+                  <div className="space-y-4">
+                    {isCliMode && (
+                      <>
+                        <Row label="Override CLI Binary Path" badge={getStatusBadge(false)}>
+                          <Input value={editingTool.overrideCliPath || ''} onChange={(v) => setEditingTool({ ...editingTool, overrideCliPath: v })} className="w-64" />
+                        </Row>
+                        <Row label="CLI Arguments" badge={getStatusBadge(false)}>
+                          <Input value={editingTool.cliArguments || ''} onChange={(v) => setEditingTool({ ...editingTool, cliArguments: v })} className="w-64" />
+                        </Row>
+                      </>
+                    )}
+                    <Row label={t('settings.ai.temperature')} badge={getStatusBadge(false)}>
+                      <Input type="number" step="0.1" min="0" max="1" value={editingTool.temperature || 0.7} onChange={(v) => setEditingTool({ ...editingTool, temperature: Number(v) })} className="w-24" />
+                    </Row>
+                    <Row label={t('settings.ai.systemPrompt')} badge={getStatusBadge(false)} noBorder>
+                      <div className="w-full mt-2">
+                        <Textarea value={editingTool.systemPrompt || ''} onChange={(v) => setEditingTool({ ...editingTool, systemPrompt: v })} rows={5} />
+                      </div>
+                    </Row>
+                  </div>
+                )}
+              </div>
+              <div className="mt-6 pt-4 border-t border-gray-100 dark:border-zinc-800">
+                <label className="flex items-center space-x-2 text-sm text-gray-900 dark:text-gray-100 font-medium">
+                  <input type="checkbox" checked={!!editingTool.isDefault} onChange={(e) => setEditingTool({ ...editingTool, isDefault: e.target.checked })} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                  <span>Set as Default Tool</span>
+                </label>
+              </div>
+            </div>
+          );
+        }
+
+        // List View
         return (
           <div className="bg-white dark:bg-zinc-900 shadow-sm border border-gray-200 dark:border-zinc-800 rounded-lg p-6 mb-6">
-            <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-zinc-800 pb-2">
+            <div className="flex justify-between items-center mb-6">
               <div>
-                <SectionTitle>{t('settings.ai.title')}</SectionTitle>
-                <Description>{t('settings.ai.description')}</Description>
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <SectionTitle>{t('settings.ai.title')}</SectionTitle>
+                  {getStatusBadge(false)}
+                </div>
+                <Description>Manage your AI tool configurations. You can add multiple tools and set one as the default for the system.</Description>
               </div>
-              {getStatusBadge(false)}
-            </div>
-            
-            <Row label={t('settings.ai.executionMode')} badge={getStatusBadge(false)}>
-              <Select 
-                value={settings.ai.executionMode || 'HTTP API'} 
-                onChange={(v) => {
-                  updateSettingsBatch({
-                    ...settings,
-                    ai: {
-                      ...settings.ai,
-                      executionMode: v,
-                      provider: v === 'Local CLI Driver' ? 'gemini-cli' : 'OpenRouter'
-                    }
+              <Button onClick={() => {
+                  setEditingToolId('new');
+                  setEditingTool({
+                      id: 'tool-' + Date.now(),
+                      name: 'New AI Tool',
+                      provider: 'OpenRouter',
+                      executionMode: 'HTTP API',
+                      model: '',
+                      isDefault: aiToolsList.length === 0
                   });
-                }} 
-                options={['HTTP API', 'Local CLI Driver']} 
-              />
-            </Row>
-
-            <Row label={t('settings.ai.provider')} badge={getStatusBadge(false)}>
-              <select
-                value={settings.ai.provider}
-                onChange={(e) => updateSetting('ai', 'provider', e.target.value)}
-                className="h-9 block w-48 rounded-md border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:text-gray-100 px-3 py-1"
-              >
-                {!isCliMode ? (
-                  <>
-                    <optgroup label="Global Ecosystem">
-                      {['OpenAI', 'Anthropic', 'Google', 'Microsoft (Azure)', 'Amazon Bedrock', 'xAI', 'Mistral', 'Groq', 'Perplexity', 'HuggingFace', 'Cohere (Voyage)', 'NVIDIA', 'GitHub Copilot'].map(o => <option key={o} value={o}>{o}</option>)}
-                    </optgroup>
-                    <optgroup label="Aggregators">
-                      {['OpenRouter', 'LiteLLM', 'Cloudflare AI Gateway', 'Vercel AI Gateway'].map(o => <option key={o} value={o}>{o}</option>)}
-                    </optgroup>
-                    <optgroup label="Chinese Ecosystem">
-                      {['DeepSeek', 'Alibaba (Qwen)', 'Tencent (Hunyuan)', 'Baidu (Qianfan)', 'ByteDance (Volcengine/Doubao)', 'Moonshot (Kimi)', 'Minimax', 'StepFun'].map(o => <option key={o} value={o}>{o}</option>)}
-                    </optgroup>
-                    <optgroup label="Local & Cloud Compute">
-                      {['Ollama', 'LMStudio', 'vLLM', 'sglang', 'cerebras', 'deepinfra', 'fireworks', 'together', 'arcee', 'chutes', 'venice'].map(o => <option key={o} value={o}>{o}</option>)}
-                    </optgroup>
-                    <optgroup label="Voice, Image & Multi-modal">
-                      {['ElevenLabs', 'Deepgram', 'SenseAudio', 'Runway', 'Fal', 'Comfy'].map(o => <option key={o} value={o}>{o}</option>)}
-                    </optgroup>
-                  </>
-                ) : (
-                  <optgroup label="Supported CLI Drivers">
-                    {['gemini-cli', 'claude-cli', 'opencode', 'codex', 'openshell', 'tts-local-cli', 'skill-workshop'].map(o => <option key={o} value={o}>{o}</option>)}
-                  </optgroup>
-                )}
-              </select>
-            </Row>
-
-            {!isCliMode && (
-              <>
-                <Row label={t('settings.ai.apiKey')} badge={getStatusBadge(false)}>
-                  <PasswordInput value={settings.ai.apiKey} onChange={(v) => updateSetting('ai', 'apiKey', v)} className="w-64" />
-                </Row>
-                <Row label={t('settings.ai.baseUrl')} badge={getStatusBadge(false)}>
-                  <Input value={settings.ai.baseUrl} onChange={(v) => updateSetting('ai', 'baseUrl', v)} className="w-64" />
-                </Row>
-              </>
-            )}
-
-            <Row label="" badge={getStatusBadge(false)}>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" onClick={handleTestConnection}>{t('settings.ai.testConnection')}</Button>
-                {testResult && <span className={`text-sm ${testResult.type === 'error' ? 'text-red-500' : testResult.type === 'success' ? 'text-green-500' : 'text-blue-500'}`}>{testResult.msg}</span>}
-              </div>
-            </Row>
-
-            <Row label={t('settings.ai.model')} badge={getStatusBadge(false)} noBorder={!advancedAiOpen}>
-              <div className="flex flex-col gap-1">
-                <div className="flex gap-2 items-center relative">
-                  <select
-                    value={settings.ai.model || ''}
-                    onChange={(e) => updateSetting('ai', 'model', e.target.value)}
-                    className="h-9 block w-48 rounded-md border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:text-gray-100 px-3 py-1"
-                  >
-                    <option value="" disabled>Select model</option>
-                    {modelsList.map(m => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                    {settings.ai.model && !modelsList.includes(settings.ai.model) && (
-                      <option value={settings.ai.model}>{settings.ai.model}</option>
-                    )}
-                  </select>
-                  <Button variant="secondary" onClick={handleTestModel}>Test</Button>
-                </div>
-                {modelsResult && <span className={`text-sm ${modelsResult.type === 'error' ? 'text-red-500' : modelsResult.type === 'success' ? 'text-green-500' : 'text-yellow-600 dark:text-yellow-500'}`}>{modelsResult.msg}</span>}
-              </div>
-            </Row>
-            
-            <div className="mt-4 border-t border-gray-100 dark:border-zinc-800 pt-4">
-              <button 
-                className="text-sm font-medium text-blue-600 dark:text-blue-400 flex items-center focus:outline-none mb-4"
-                onClick={() => setAdvancedAiOpen(!advancedAiOpen)}
-              >
-                {t('settings.ai.advancedOptions')}
-                <svg className={`w-4 h-4 ml-1 transform transition-transform ${advancedAiOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-              </button>
-              
-              {advancedAiOpen && (
-                <div className="space-y-4">
-                  {isCliMode && (
-                    <>
-                      <Row label="Override CLI Binary Path" badge={getStatusBadge(false)}>
-                        <Input value={settings.ai.overrideCliPath || ''} onChange={(v) => updateSetting('ai', 'overrideCliPath', v)} className="w-64" />
-                      </Row>
-                      <Row label="CLI Arguments" badge={getStatusBadge(false)}>
-                        <Input value={settings.ai.cliArguments || ''} onChange={(v) => updateSetting('ai', 'cliArguments', v)} className="w-64" />
-                      </Row>
-                    </>
-                  )}
-                  <Row label={t('settings.ai.temperature')} badge={getStatusBadge(false)}>
-                    <Input type="number" step="0.1" min="0" max="1" value={settings.ai.temperature} onChange={(v) => updateSetting('ai', 'temperature', Number(v))} className="w-24" />
-                  </Row>
-                  <Row label={t('settings.ai.systemPrompt')} badge={getStatusBadge(false)} noBorder>
-                    <div className="w-full mt-2">
-                      <Textarea value={settings.ai.systemPrompt} onChange={(v) => updateSetting('ai', 'systemPrompt', v)} rows={5} />
-                    </div>
-                  </Row>
-                </div>
-              )}
+              }}><Plus size={16} className="mr-2" /> Add AI Tool</Button>
             </div>
             
-            
+            {aiToolsList.length > 0 ? (
+              <div className="space-y-4">
+                {aiToolsList.map(tool => (
+                  <div key={tool.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg ${tool.isDefault ? 'border-blue-200 dark:border-blue-900/50 bg-blue-50/30 dark:bg-blue-900/10' : 'border-gray-100 dark:border-zinc-800'}`}>
+                    <div className="flex items-start gap-4">
+                      <div className="pt-1 cursor-pointer" onClick={() => setDefaultTool(tool.id)}>
+                         <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${tool.isDefault ? 'border-blue-600' : 'border-gray-300 dark:border-zinc-600'}`}>
+                            {tool.isDefault && <div className="w-2.5 h-2.5 bg-blue-600 rounded-full" />}
+                         </div>
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                          {tool.name || tool.provider}
+                          {tool.isDefault && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">Default</span>}
+                        </div>
+                        <div className="text-sm text-gray-500 mt-1">{tool.provider} • {tool.executionMode}</div>
+                        <div className="text-sm text-gray-500 mt-1 font-mono text-xs text-ellipsis overflow-hidden whitespace-nowrap max-w-[200px] sm:max-w-xs">{tool.model || 'No model selected'}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-4 sm:mt-0 ml-9 sm:ml-0">
+                      <Button variant="secondary" onClick={() => { setEditingToolId(tool.id); setEditingTool({ ...tool }); }}>Edit</Button>
+                      <Button variant="danger" onClick={() => deleteTool(tool.id)}>Delete</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-lg">
+                <div className="w-16 h-16 bg-gray-50 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4 text-gray-400">
+                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                </div>
+                <h4 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1">No AI Tools Configured</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">Add your first AI provider to start using the assistant.</p>
+              </div>
+            )}
           </div>
         );
+      }
       case 'mcp':
         return (
           <div className="bg-white dark:bg-zinc-900 shadow-sm border border-gray-200 dark:border-zinc-800 rounded-lg p-6 mb-6">

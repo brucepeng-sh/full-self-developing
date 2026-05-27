@@ -361,12 +361,32 @@ function loadSettings() {
             ...defaults,
             ...settings,
             ai: { ...defaults.ai, ...(settings.ai || {}) },
+            aiTools: settings.aiTools || [],
             ui: { ...defaults.ui, ...(settings.ui || {}) },
             fsd: { ...defaults.fsd, ...(settings.fsd || {}) },
             memory: { ...defaults.memory, ...(settings.memory || {}) },
             safety: { ...defaults.safety, ...(settings.safety || {}) },
             advanced: { ...defaults.advanced, ...(settings.advanced || {}) }
         };
+        
+        // Migration: If we have ai settings but no aiTools, wrap it
+        if (merged.ai && (!merged.aiTools || merged.aiTools.length === 0)) {
+            merged.aiTools = [{
+                ...merged.ai,
+                id: 'default-legacy',
+                name: 'Default AI',
+                isDefault: true
+            }];
+        }
+        
+        // Ensure ai object is populated from the default aiTools for backward compatibility
+        if (merged.aiTools && merged.aiTools.length > 0) {
+            const defaultTool = merged.aiTools.find(t => t.isDefault) || merged.aiTools[0];
+            merged.ai = { ...defaultTool };
+            delete merged.ai.isDefault;
+            delete merged.ai.name;
+            delete merged.ai.id;
+        }
         
         // Ensure model in settings matches the active model in root config
         if (config.model) {
@@ -400,6 +420,15 @@ function saveSettings(newSettings) {
         
         config.settings = newSettings;
         config.updated_at = new Date().toISOString();
+        
+        // Sync default tool from aiTools to ai
+        if (newSettings.aiTools && newSettings.aiTools.length > 0) {
+            const defaultTool = newSettings.aiTools.find(t => t.isDefault) || newSettings.aiTools[0];
+            newSettings.ai = { ...defaultTool };
+            delete newSettings.ai.isDefault;
+            delete newSettings.ai.name;
+            delete newSettings.ai.id;
+        }
         
         // Synchronize settings model and execution mode to root config
         if (newSettings.ai) {
